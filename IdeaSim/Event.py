@@ -11,5 +11,5 @@ class Event:
         self.sim.process(self.__dispatch__())
 
     def __dispatch__(self):
-        yield self.sim.wait(self.time)
+        yield self.sim.wait(self.time - self.sim.now)
         self.sim.manager.manage(self)
