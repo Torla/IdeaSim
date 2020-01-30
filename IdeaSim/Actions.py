@@ -22,6 +22,9 @@ class Action:
         assert isinstance(after, list) or after is None
         self.after = [] if after is None else after
 
+    def __str__(self) -> str:
+        return str(self.actionType) + str(self.param)
+
 
 class Block(Action):
 
@@ -33,6 +36,13 @@ class Free(Action):
 
     def __init__(self, action_graph, who, sort_by=None, param=None, after=None):
         super().__init__(action_graph, "Free", who, sort_by=sort_by, param=param, after=after)
+
+
+class GenerateEvent(Action):
+
+    def __init__(self, action_graph, event, after=None):
+        super().__init__(action_graph, action_type="Event generation", who=None, sort_by=None, param=None, after=after)
+        self.event = event
 
 
 class ActionsGraph:
@@ -122,6 +132,10 @@ class Executor:
             ),
                            7)
             self.sim.manager.activate()
+
+        elif isinstance(action, GenerateEvent):
+            action.event.launch()
+            sim.logger.log(str(action) + " launches event " + str(action.event), 7)
 
         else:
             try:

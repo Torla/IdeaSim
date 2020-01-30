@@ -1,4 +1,4 @@
-from IdeaSim.Actions import ActionsGraph, Action, Block, Free
+from IdeaSim.Actions import ActionsGraph, Action, Block, Free, GenerateEvent
 from IdeaSim.Event import Event
 from IdeaSim.Manager import Manager
 from IdeaSim.Resources import Performer, Resource
@@ -47,11 +47,12 @@ class Aquifer(Performer):
 def haul(event):
     g = ActionsGraph(event.sim)
     b = Block(g, lambda x: isinstance(x, Aquifer))
-    b = Block(g, lambda x: isinstance(x, Well))
+    b1 = Block(g, lambda x: isinstance(x, Well))
     t = Action(g, "take", lambda x: isinstance(x, Aquifer), param={"well": lambda x: isinstance(x, Aquifer)},
-               after=[b.id])
+               after=[b.id, b1.id])
     f = Free(g, lambda x: isinstance(x, Aquifer), None, after=[t.id])
-    f = Free(g, lambda x: isinstance(x, Well), None, after=[t.id])
+    f1 = Free(g, lambda x: isinstance(x, Well), None, after=[t.id])
+    GenerateEvent(g, Event(sim, None, "haul"), after=[f1.id, f.id])
     return g
 
 

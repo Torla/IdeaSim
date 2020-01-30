@@ -8,8 +8,17 @@ class Event:
         self.sim = sim
         self.time = time
         self.event_type = event_type
-        self.sim.process(self.__dispatch__())
+        if self.time is not None:
+            self.sim.process(self.__dispatch__())
 
     def __dispatch__(self):
         yield self.sim.wait(self.time - self.sim.now)
         self.sim.manager.manage(self)
+
+    def launch(self):
+        self.sim.manager.manage(self)
+
+    def __str__(self) -> str:
+        return str(self.event_type)
+
+
