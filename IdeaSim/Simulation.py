@@ -3,7 +3,7 @@ from enum import Enum
 import simpy
 
 from IdeaSim.Manager import Manager
-from IdeaSim.Resources import Resources
+from IdeaSim.Resources import Resources, Resource
 
 
 class Simulation(simpy.Environment):
@@ -41,9 +41,9 @@ class Simulation(simpy.Environment):
 
     # adding new not re-putting
     def add_res(self, res):
-        assert isinstance(res, Resources)
+        assert isinstance(res, Resource)
         self.all_res.append(res)
-        self.free_res.put(res)
+        self.free_res.items.append(res)
 
     def find_res_by_id(self, id, free=True):
         l = self.free_res.items if free else self.all_res
@@ -60,8 +60,8 @@ class Simulation(simpy.Environment):
         return self.free_res.get(lambda x: func(x) == id)
 
     def put_res(self, res):
-        assert isinstance(res, Resources)
-        self.free_res.put(res)
+        assert isinstance(res, Resource)
+        return self.free_res.put(res)
 
     def wait(self, delay):
         return self.timeout(delay)

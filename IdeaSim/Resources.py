@@ -28,5 +28,9 @@ class Performer(Resource):
         def __init__(self, msg):
             self.msg = msg
 
-    def perform(self, action):
-        self.action_map[action.actionType](action)
+    def add_mapping(self, action_type, func):
+        self.action_map[action_type] = func
+
+    def perform(self, action, taken_inf):
+        for i in self.action_map[action.actionType](action, self.sim, taken_inf):
+            yield i

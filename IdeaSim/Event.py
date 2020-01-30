@@ -1,10 +1,10 @@
 # to be implemented by the and user
-from IdeaSim.Simulation import Simulation
+from IdeaSim import Simulation
 
 
 class Event:
     def __init__(self, sim, time, event_type):
-        assert isinstance(sim, Simulation)
+        assert isinstance(sim, Simulation.Simulation)
         self.sim = sim
         self.time = time
         self.event_type = event_type

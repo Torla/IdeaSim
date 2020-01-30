@@ -24,14 +24,14 @@ class Action:
 
 class Block(Action):
 
-    def __init__(self, action_graph, action_type, who, param=None, after=None):
-        super().__init__(action_graph, action_type, who, param, after)
+    def __init__(self, action_graph, who, param=None, after=None):
+        super().__init__(action_graph, "Block", who, param, after)
 
 
 class Free(Action):
 
-    def __init__(self, action_graph, action_type, who, param=None, after=None):
-        super().__init__(action_graph, action_type, who, param, after)
+    def __init__(self, action_graph, who, param=None, after=None):
+        super().__init__(action_graph, "Free", who, param, after)
 
 
 class ActionsGraph:
@@ -90,17 +90,17 @@ class Executor:
 
         if isinstance(action, Block):
             yield sim.get_res_by_id(action.who)
-            taken_inf.append(sim.find_res_by_id(action.who))
-            completed_flags[action.id].put(float('inf'))
+            taken_inf.append(sim.find_res_by_id(action.who, free=False))
+            yield completed_flags[action.id].put(float('inf'))
             sim.logger.log("blocking  " + str(
-                sim.find_res_by_id(action.who)),
+                sim.find_res_by_id(action.who,free=False)),
                            7)
 
         elif isinstance(action, Free):
             inf = list(filter(lambda x: x.id == action.who, taken_inf))[0]
             yield sim.put_res(inf)
             taken_inf.remove(inf)
-            completed_flags[action.id].put(float('inf'))
+            yield completed_flags[action.id].put(float('inf'))
             # manager is activated after anything is free
             sim.logger.log("Free " + str(
                 sim.find_res_by_id(action.who)
@@ -111,7 +111,7 @@ class Executor:
         else:
             try:
                 yield self.sim.process(
-                    list(filter(lambda x: x.id == action.who, taken_inf))[0].perform(action, taken_inf, sim))
+                    list(filter(lambda x: x.id == action.who, taken_inf))[0].perform(action, taken_inf))
             except Performer.IllegalAction as err:
                 sim.logger.log(str(err), type=sim.logger.Type.FAIL)
             except KeyError as err:

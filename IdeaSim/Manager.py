@@ -2,8 +2,10 @@ from simpy import Container
 
 from IdeaSim import Simulation, Event
 
-
 # todo add mapping
+from IdeaSim import Actions
+
+
 class Manager:
     class RetryLater(Exception):
 
@@ -22,19 +24,21 @@ class Manager:
     def add_mapping(self, event_type, func):
         self.type_map[event_type] = func
 
-    def a(self):
-        yield self.activation.put(1)
-
     def activate(self):
+        def a():
+            yield self.activation.put(1)
 
-        self.sim.process(self.a())
+        self.sim.process(a())
 
     def manage(self, event):
         assert isinstance(event, Event.Event)
+        ret = None
         try:
-            self.type_map[event.event_type](event)
+            ret = self.type_map[event.event_type](event)
         except Manager.RetryLater:
             self.event_queue.append(event)
+        if isinstance(ret, Actions.ActionsGraph):
+            Actions.Executor(self.sim, ret)
 
     def __auto_run__(self):
         while True:
