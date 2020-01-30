@@ -59,6 +59,10 @@ class Simulation(simpy.Environment):
     def get_res(self, func):
         return self.free_res.get(lambda x: func(x) == id)
 
+    def is_free(self, res):
+        assert isinstance(res, Resource)
+        return res in self.free_res.items
+
     def put_res(self, res):
         assert isinstance(res, Resource)
         return self.free_res.put(res)

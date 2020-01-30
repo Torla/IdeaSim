@@ -18,6 +18,9 @@ class Resource:
         self.sim = sim
         self.id = next(self.new_id)
 
+    def __str__(self) -> str:
+        return str(self.id)
+
 
 class Performer(Resource):
     def __init__(self, sim):
@@ -32,5 +35,6 @@ class Performer(Resource):
         self.action_map[action_type] = func
 
     def perform(self, action, taken_inf):
+        self.sim.logger.log(str(self) + " perform " + str(action), 7)
         for i in self.action_map[action.actionType](action, self.sim, taken_inf):
             yield i

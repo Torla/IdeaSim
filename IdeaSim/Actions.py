@@ -10,13 +10,14 @@ from IdeaSim.Resources import Performer
 class Action:
     new_id = itertools.count()
 
-    def __init__(self, action_graph, action_type, who, param=None, after=None):
+    def __init__(self, action_graph, action_type, who, sort_by=None, param=None, after=None):
         self.id = next(self.new_id)
         assert isinstance(action_graph, ActionsGraph)
         action_graph.actions[self.id] = self
         self.actionType = action_type
         self.who = who
         assert isinstance(param, dict) or param is None
+        self.sort_by = sort_by
         self.param = {} if param is None else param
         assert isinstance(after, list) or after is None
         self.after = [] if after is None else after
@@ -24,14 +25,14 @@ class Action:
 
 class Block(Action):
 
-    def __init__(self, action_graph, who, param=None, after=None):
-        super().__init__(action_graph, "Block", who, param, after)
+    def __init__(self, action_graph, who, sort_by=None, param=None, after=None):
+        super().__init__(action_graph, "Block", who, sort_by=sort_by, param=param, after=after)
 
 
 class Free(Action):
 
-    def __init__(self, action_graph, who, param=None, after=None):
-        super().__init__(action_graph, "Free", who, param, after)
+    def __init__(self, action_graph, who, sort_by=None, param=None, after=None):
+        super().__init__(action_graph, "Free", who, sort_by=sort_by, param=param, after=after)
 
 
 class ActionsGraph:
@@ -90,7 +91,12 @@ class Executor:
 
         if isinstance(action, Block):
             if callable(action.who):
-                action.who = sim.find_res(action.who, free=False)[0].id
+                l = sim.find_res(action.who, free=False)
+                if action.sort_by is None:
+                    l.sort(key=lambda x: 0 if sim.is_free(x) else 1)
+                else:
+                    l.sort(key=lambda x: action.sort_by(x))
+                action.who = l[0].id
             yield sim.get_res_by_id(action.who)
             taken_inf.append(sim.find_res_by_id(action.who, free=False))
             yield completed_flags[action.id].put(float('inf'))
@@ -100,22 +106,31 @@ class Executor:
 
         elif isinstance(action, Free):
             if callable(action.who):
-                action.who = sim.find_res(action.who, free=False)[0].id
+                l = list(filter(lambda x: action.who(x), taken_inf))
+                if action.sort_by is None:
+                    pass
+                else:
+                    l.sort(key=lambda x: action.sort_by(x))
+                action.who = l[0].id
             inf = list(filter(lambda x: x.id == action.who, taken_inf))[0]
             yield sim.put_res(inf)
             taken_inf.remove(inf)
             yield completed_flags[action.id].put(float('inf'))
             # manager is activated after anything is free
             sim.logger.log("Free " + str(
-                sim.find_res_by_id(action.who)
+                sim.find_res_by_id(inf.id, free=False)
             ),
                            7)
             self.sim.manager.activate()
 
         else:
             try:
-                if callable(action.who):
-                    action.who = list(filter(lambda x: action.who(x), taken_inf))[0].id
+                l = list(filter(lambda x: action.who(x), taken_inf))
+                if action.sort_by is None:
+                    pass
+                else:
+                    l.sort(key=lambda x: action.sort_by(x))
+                action.who = l[0].id
                 yield self.sim.process(
                     list(filter(lambda x: x.id == action.who, taken_inf))[0].perform(action, taken_inf))
             except Performer.IllegalAction as err:
