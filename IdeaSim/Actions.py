@@ -89,14 +89,18 @@ class Executor:
             sim.logger.log("waiting for non existing action", 0, sim.logger.Type.FAIL)
 
         if isinstance(action, Block):
+            if callable(action.who):
+                action.who = sim.find_res(action.who, free=False)[0].id
             yield sim.get_res_by_id(action.who)
             taken_inf.append(sim.find_res_by_id(action.who, free=False))
             yield completed_flags[action.id].put(float('inf'))
             sim.logger.log("blocking  " + str(
-                sim.find_res_by_id(action.who,free=False)),
+                sim.find_res_by_id(action.who, free=False)),
                            7)
 
         elif isinstance(action, Free):
+            if callable(action.who):
+                action.who = sim.find_res(action.who, free=False)[0].id
             inf = list(filter(lambda x: x.id == action.who, taken_inf))[0]
             yield sim.put_res(inf)
             taken_inf.remove(inf)
@@ -110,6 +114,8 @@ class Executor:
 
         else:
             try:
+                if callable(action.who):
+                    action.who = list(filter(lambda x: action.who(x), taken_inf))[0].id
                 yield self.sim.process(
                     list(filter(lambda x: x.id == action.who, taken_inf))[0].perform(action, taken_inf))
             except Performer.IllegalAction as err:

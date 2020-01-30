@@ -51,7 +51,7 @@ class Simulation(simpy.Environment):
 
     def find_res(self, func, free=True) -> list:
         l = self.free_res.items if free else self.all_res
-        return list(filter(lambda x: func(x) == id, l))
+        return list(filter(lambda x: func(x), l))
 
     def get_res_by_id(self, id):
         return self.free_res.get(lambda x: x.id == id)

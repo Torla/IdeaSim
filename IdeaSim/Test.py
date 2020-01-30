@@ -11,9 +11,9 @@ def test(event):
         raise Manager.RetryLater
     event.sim.logger.log(str(event))
     g = ActionsGraph(event.sim)
-    b = Block(g, 0)
-    a = Action(g, "test", 0, None, [b.id])
-    Free(g, 0, None, [a.id])
+    b = Block(g, lambda x: True)
+    a = Action(g, "test", lambda x: True, None, [b.id])
+    Free(g, lambda x: True, None, [a.id])
     return g
 
 
