@@ -30,7 +30,7 @@ class Simulation(simpy.Environment):
             s = str(self.env.now) + ":" + " " * indent + msg
             print(type.value + s + '\033[0m')
 
-    def __init__(self):
+    def __init__(self, status=None):
         super().__init__()
         self.logger = Simulation.Logger(self)
 
@@ -38,6 +38,8 @@ class Simulation(simpy.Environment):
 
         self.free_res = Resources(self)
         self.all_res = []
+
+        self.__status__ = None
 
     # adding new not re-putting
     def add_res(self, res):
@@ -69,3 +71,11 @@ class Simulation(simpy.Environment):
 
     def wait(self, delay):
         return self.timeout(delay)
+
+    def get_status(self):
+        return self.__status__
+
+    def modify_status(self):
+        self.logger.log("Status change", 2)
+        self.manager.activate()
+        return self.__status__

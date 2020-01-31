@@ -38,3 +38,11 @@ class Performer(Resource):
         self.sim.logger.log(str(self) + " perform " + str(action), 7)
         for i in self.action_map[action.actionType](action, self.sim, taken_inf):
             yield i
+
+
+class Movable():
+    def __init__(self, position):
+        self.position = position
+
+    def move(self, position):
+        self.position = position
