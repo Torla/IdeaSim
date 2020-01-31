@@ -10,7 +10,8 @@ from IdeaSim.Resources import Performer
 class Action:
     new_id = itertools.count()
 
-    def __init__(self, action_graph, action_type, who, sort_by=None, param=None, after=None):
+    def __init__(self, action_graph, action_type, who, sort_by=None, param=None, after=None, condition=None,
+                 on_false=None):
         self.id = next(self.new_id)
         assert isinstance(action_graph, ActionsGraph)
         action_graph.actions[self.id] = self
@@ -21,6 +22,11 @@ class Action:
         self.param = {} if param is None else param
         assert isinstance(after, list) or after is None
         self.after = [] if after is None else after
+        self.condition = condition
+        self.on_false = on_false
+
+    def abort(self, action, sim):
+        raise Executor.AbortExecution
 
     def __str__(self) -> str:
         return str(self.actionType) + str(self.param)
@@ -59,6 +65,12 @@ class Executor:
         self.action_tree = action_tree
         self.sim = sim
         sim.process(self.run())
+        self.aborted = False
+
+    class AbortExecution(Exception):
+
+        def __init__(self) -> None:
+            super().__init__()
 
     def run(self):
         wait = None
@@ -98,6 +110,14 @@ class Executor:
                 yield wait
         except KeyError:
             sim.logger.log("waiting for non existing action", 0, sim.logger.Type.FAIL)
+
+        if action.condition is not None:
+            assert callable(action.condition)
+            if not action.condition(sim):
+                if action.on_false is not None:
+                    assert callable(action.on_false)
+                    yield completed_flags[action.id].put(float('inf'))
+                    action.on_false(action, sim)
 
         if isinstance(action, Block):
             if callable(action.who):
@@ -154,4 +174,4 @@ class Executor:
             except IndexError as err:
                 sim.logger.log("Performer not blocked " + str(err), type=sim.logger.Type.FAIL)
 
-            completed_flags[action.id].put(float('inf'))
+            yield completed_flags[action.id].put(float('inf'))

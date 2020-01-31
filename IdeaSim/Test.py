@@ -43,6 +43,26 @@ class Aquifer(Performer):
     def drop(self, action, sim, taken_inf):
         yield sim.wait(10)
 
+    def start_rain(self):
+
+    @staticmethod
+    def haul(event):
+        if event.sim.get_status().rain:
+            raise Manager.RetryLater()
+        g = ActionsGraph(event.sim)
+        b = Block(g, lambda x: isinstance(x, Aquifer))
+        b1 = Block(g, lambda x: isinstance(x, Well))
+        t = Action(g, "take", lambda x: isinstance(x, Aquifer), param={"well": lambda x: isinstance(x, Well)},
+                   after=[b.id, b1.id])
+        f1 = Free(g, lambda x: isinstance(x, Well), None, after=[t.id])
+        b1 = Block(g, lambda x: isinstance(x, Tank), after=[t.id])
+        t = Action(g, "drop", lambda x: isinstance(x, Aquifer), param={"tank": lambda x: isinstance(x, Tank)},
+                   after=[b1.id])
+        f = Free(g, lambda x: isinstance(x, Aquifer), None, after=[t.id])
+        f1 = Free(g, lambda x: isinstance(x, Tank), None, after=[t.id])
+        GenerateEvent(g, Event(sim, None, "haul"), after=[f1.id, f.id])
+        return g
+
 
 class Status:
     def __init__(self, sim):
@@ -61,28 +81,12 @@ class Status:
         Event(sim, sim.now + 50, "weather")
 
 
-def haul(event):
-    if event.sim.get_status().rain:
-        raise Manager.RetryLater()
-    g = ActionsGraph(event.sim)
-    b = Block(g, lambda x: isinstance(x, Aquifer))
-    b1 = Block(g, lambda x: isinstance(x, Well))
-    t = Action(g, "take", lambda x: isinstance(x, Aquifer), param={"well": lambda x: isinstance(x, Well)},
-               after=[b.id, b1.id])
-    f1 = Free(g, lambda x: isinstance(x, Well), None, after=[t.id])
-    b1 = Block(g, lambda x: isinstance(x, Tank), after=[t.id])
-    t = Action(g, "drop", lambda x: isinstance(x, Aquifer), param={"tank": lambda x: isinstance(x, Tank)},
-               after=[b1.id])
-    f = Free(g, lambda x: isinstance(x, Aquifer), None, after=[t.id])
-    f1 = Free(g, lambda x: isinstance(x, Tank), None, after=[t.id])
-    GenerateEvent(g, Event(sim, None, "haul"), after=[f1.id, f.id])
-    return g
 
 
 if __name__ == '__main__':
     sim = Simulation()
     sim.__status__ = Status(sim)
-    sim.manager.add_mapping("haul", haul)
+    sim.manager.add_mapping("haul", Aquifer.haul)
 
     sim.add_res(Well(sim))
     sim.add_res(Tank(sim))
