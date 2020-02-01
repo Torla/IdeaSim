@@ -25,7 +25,8 @@ class Action:
         self.condition = condition
         self.on_false = on_false
 
-    def abort(self, action, sim):
+    @staticmethod
+    def abort(action, sim):
         raise Executor.AbortExecution
 
     def __str__(self) -> str:
@@ -91,6 +92,12 @@ class Executor:
                 wait = wait & flag.get(1)
         yield wait
 
+        if self.aborted:
+            for res in taken_inf:
+                self.sim.put_res(res)
+
+        taken_inf.clear()
+
         if len(taken_inf) != 0:
             raise Exception("Resources not free at end of task")
 
@@ -111,13 +118,21 @@ class Executor:
         except KeyError:
             sim.logger.log("waiting for non existing action", 0, sim.logger.Type.FAIL)
 
+        if self.aborted:
+            yield completed_flags[action.id].put(float('inf'))
+            return
+
         if action.condition is not None:
             assert callable(action.condition)
-            if not action.condition(sim):
+            if not (action.condition(sim)):
                 if action.on_false is not None:
                     assert callable(action.on_false)
                     yield completed_flags[action.id].put(float('inf'))
-                    action.on_false(action, sim)
+                    try:
+                        action.on_false(action, sim)
+                    except Executor.AbortExecution:
+                        self.aborted = True
+                    return
 
         if isinstance(action, Block):
             if callable(action.who):

@@ -43,7 +43,10 @@ class Aquifer(Performer):
     def drop(self, action, sim, taken_inf):
         yield sim.wait(10)
 
-    def start_rain(self):
+    @staticmethod
+    def rain(action, sim):
+        Event(sim, sim.now + 1, "haul")
+        Action.abort(action, sim)
 
     @staticmethod
     def haul(event):
@@ -53,7 +56,7 @@ class Aquifer(Performer):
         b = Block(g, lambda x: isinstance(x, Aquifer))
         b1 = Block(g, lambda x: isinstance(x, Well))
         t = Action(g, "take", lambda x: isinstance(x, Aquifer), param={"well": lambda x: isinstance(x, Well)},
-                   after=[b.id, b1.id])
+                   after=[b.id, b1.id], condition=lambda x: not x.get_status().rain, on_false=Aquifer.rain)
         f1 = Free(g, lambda x: isinstance(x, Well), None, after=[t.id])
         b1 = Block(g, lambda x: isinstance(x, Tank), after=[t.id])
         t = Action(g, "drop", lambda x: isinstance(x, Aquifer), param={"tank": lambda x: isinstance(x, Tank)},
@@ -78,9 +81,7 @@ class Status:
     @staticmethod
     def change_of_whether(event):
         event.sim.modify_status().toggle_rain()
-        Event(sim, sim.now + 50, "weather")
-
-
+        Event(sim, sim.now + 59, "weather")
 
 
 if __name__ == '__main__':
