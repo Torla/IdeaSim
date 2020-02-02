@@ -122,71 +122,72 @@ class Executor:
             yield completed_flags[action.id].put(float('inf'))
             return
 
-        if action.condition is not None:
-            assert callable(action.condition)
-            if not (action.condition(sim)):
-                if action.on_false is not None:
-                    assert callable(action.on_false)
-                    yield completed_flags[action.id].put(float('inf'))
-                    try:
-                        action.on_false(action, sim)
-                    except Executor.AbortExecution:
-                        self.aborted = True
+        try:
+            if action.condition is not None:
+                assert callable(action.condition)
+                if not (action.condition(sim)):
+                    if action.on_false is not None:
+                        assert callable(action.on_false)
+                        yield completed_flags[action.id].put(float('inf'))
+                        yield action.on_false(action, sim)
                     return
 
-        if isinstance(action, Block):
-            if callable(action.who):
-                l = sim.find_res(action.who, free=False)
-                if action.sort_by is None:
-                    l.sort(key=lambda x: 0 if sim.is_free(x) else 1)
+            if isinstance(action, Block):
+                if callable(action.who):
+                    yield sim.get_res(action.who)
+                    taken_inf.append(sim.find_res(action.who, free=False)[0])
+                    yield completed_flags[action.id].put(float('inf'))
+                    sim.logger.log("blocking  " + str(
+                        sim.find_res(action.who, free=False)),
+                                   7)
                 else:
-                    l.sort(key=lambda x: action.sort_by(x))
-                action.who = l[0].id
-            yield sim.get_res_by_id(action.who)
-            taken_inf.append(sim.find_res_by_id(action.who, free=False))
-            yield completed_flags[action.id].put(float('inf'))
-            sim.logger.log("blocking  " + str(
-                sim.find_res_by_id(action.who, free=False)),
-                           7)
+                    yield sim.get_res_by_id(action.who)
+                    taken_inf.append(sim.find_res_by_id(action.who, free=False))
+                    yield completed_flags[action.id].put(float('inf'))
+                    sim.logger.log("blocking  " + str(
+                        sim.find_res_by_id(action.who, free=False)),
+                                   7)
 
-        elif isinstance(action, Free):
-            if callable(action.who):
-                l = list(filter(lambda x: action.who(x), taken_inf))
-                if action.sort_by is None:
-                    pass
-                else:
-                    l.sort(key=lambda x: action.sort_by(x))
-                action.who = l[0].id
-            inf = list(filter(lambda x: x.id == action.who, taken_inf))[0]
-            yield sim.put_res(inf)
-            taken_inf.remove(inf)
-            yield completed_flags[action.id].put(float('inf'))
-            # manager is activated after anything is free
-            sim.logger.log("Free " + str(
-                sim.find_res_by_id(inf.id, free=False)
-            ),
-                           7)
-            self.sim.manager.activate()
+            elif isinstance(action, Free):
+                if callable(action.who):
+                    l = list(filter(lambda x: action.who(x), taken_inf))
+                    if action.sort_by is None:
+                        pass
+                    else:
+                        l.sort(key=lambda x: action.sort_by(x))
+                    action.who = l[0].id
+                inf = list(filter(lambda x: x.id == action.who, taken_inf))[0]
+                yield sim.put_res(inf)
+                taken_inf.remove(inf)
+                yield completed_flags[action.id].put(float('inf'))
+                # manager is activated after anything is free
+                sim.logger.log("Free " + str(
+                    sim.find_res_by_id(inf.id, free=False)
+                ),
+                               7)
+                self.sim.manager.activate()
 
-        elif isinstance(action, GenerateEvent):
-            action.event.launch()
-            sim.logger.log(str(action) + " launches event " + str(action.event), 7)
+            elif isinstance(action, GenerateEvent):
+                action.event.launch()
+                sim.logger.log(str(action) + " launches event " + str(action.event), 7)
 
-        else:
-            try:
-                l = list(filter(lambda x: action.who(x), taken_inf))
-                if action.sort_by is None:
-                    pass
-                else:
-                    l.sort(key=lambda x: action.sort_by(x))
-                action.who = l[0].id
-                yield self.sim.process(
-                    list(filter(lambda x: x.id == action.who, taken_inf))[0].perform(action, taken_inf))
-            except Performer.IllegalAction as err:
-                sim.logger.log(str(err), type=sim.logger.Type.FAIL)
-            except KeyError as err:
-                sim.logger.log("Action parameter not defined" + str(err), type=sim.logger.Type.FAIL)
-            except IndexError as err:
-                sim.logger.log("Performer not blocked " + str(err), type=sim.logger.Type.FAIL)
+            else:
+                try:
+                    l = list(filter(lambda x: action.who(x), taken_inf))
+                    if action.sort_by is None:
+                        pass
+                    else:
+                        l.sort(key=lambda x: action.sort_by(x))
+                    action.who = l[0].id
+                    yield self.sim.process(
+                        list(filter(lambda x: x.id == action.who, taken_inf))[0].perform(action, taken_inf))
+                except Performer.IllegalAction as err:
+                    sim.logger.log(str(err), type=sim.logger.Type.FAIL)
+                except KeyError as err:
+                    sim.logger.log("Action parameter not defined" + str(err), type=sim.logger.Type.FAIL)
+                except IndexError as err:
+                    sim.logger.log("Performer not blocked " + str(err), type=sim.logger.Type.FAIL)
 
-            yield completed_flags[action.id].put(float('inf'))
+                yield completed_flags[action.id].put(float('inf'))
+        except Executor.AbortExecution:
+            self.aborted = True
