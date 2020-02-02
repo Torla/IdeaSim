@@ -134,11 +134,11 @@ class Executor:
 
             if isinstance(action, Block):
                 if callable(action.who):
-                    yield sim.get_res(action.who)
-                    taken_inf.append(sim.find_res(action.who, free=False)[0])
+                    res = yield sim.get_res(action.who, action.sort_by)
+                    taken_inf.append(res)
                     yield completed_flags[action.id].put(float('inf'))
                     sim.logger.log("blocking  " + str(
-                        sim.find_res(action.who, free=False)),
+                        res),
                                    7)
                 else:
                     yield sim.get_res_by_id(action.who)

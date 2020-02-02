@@ -58,7 +58,13 @@ class Simulation(simpy.Environment):
     def get_res_by_id(self, id):
         return self.free_res.get(lambda x: x.id == id)
 
-    def get_res(self, func):
+    def get_res(self, func, sort_by=None):
+        if sort_by is not None:
+            assert callable(sort_by)
+            l = self.find_res(func)
+            l.sort(key=sort_by)
+            if len(l) != 0:
+                return self.get_res_by_id(l[0].id)
         return self.free_res.get(lambda x: func(x))
 
     def is_free(self, res):

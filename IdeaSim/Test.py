@@ -84,7 +84,8 @@ class Aquifer(Performer):
         t = Action(g, "take", lambda x: isinstance(x, Aquifer), param={"well": lambda x: isinstance(x, Well)},
                    after=[b.id, b1.id], condition=lambda x: not x.get_status().rain, on_false=Aquifer.rain)
         f1 = Free(g, lambda x: isinstance(x, Well), None, after=[t.id])
-        b1 = Block(g, lambda x: isinstance(x, Tank) and not x.is_full(), after=[t.id, f1.id])
+        b1 = Block(g, lambda x: isinstance(x, Tank) and not x.is_full(), sort_by=lambda x: x.full.level,
+                   after=[t.id, f1.id])
         t = Action(g, "drop", lambda x: isinstance(x, Aquifer), param={"tank": lambda x: isinstance(x, Tank)},
                    after=[b1.id])
         f = Free(g, lambda x: isinstance(x, Aquifer), None, after=[t.id])
@@ -117,10 +118,10 @@ if __name__ == '__main__':
 
     sim.add_res(Well(sim))
     sim.add_res(Tank(sim, 100))
-    sim.add_res(Tank(sim, 100))
-    sim.add_res(Well(sim))
+    # sim.add_res(Tank(sim, 100))
+    # sim.add_res(Well(sim))
     p = Aquifer(sim)
     sim.add_res(p)
-    p = Aquifer(sim)
-    sim.add_res(p)
+    # p = Aquifer(sim)
+    # sim.add_res(p)
     sim.run()
