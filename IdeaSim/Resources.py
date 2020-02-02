@@ -1,3 +1,4 @@
+import abc
 import itertools
 
 from simpy import FilterStore
@@ -40,9 +41,21 @@ class Performer(Resource):
             yield i
 
 
-class Movable():
-    def __init__(self, position):
+class Position:
+    def __init__(self):
+        pass
+
+    def distance(self, pos) -> int:
+        raise NotImplementedError("Please Implement this method")
+
+    def __eq__(self, other):
+        raise NotImplementedError("Please Implement this method")
+
+
+class Movable(Performer):
+    def __init__(self, position, sim):
+        super().__init__(sim)
         self.position = position
 
     def move(self, position):
-        self.position = position
+        self.sim.logger.log(str(self) + " move from " + str(self.position) + " to " + str(position), 9)

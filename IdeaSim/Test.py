@@ -1,4 +1,4 @@
-from IdeaSim.Actions import ActionsGraph, Action, Block, Free, GenerateEvent
+from IdeaSim.Actions import ActionsGraph, Action, Block, Free, GenerateEvent, Branch
 from IdeaSim.Event import Event
 from IdeaSim.Manager import Manager
 from IdeaSim.Resources import Performer, Resource
@@ -36,7 +36,8 @@ class Tank(Performer):
     def empty_tank(self, event):
         g = ActionsGraph(event.sim)
         b = Block(g, self.id, sort_by=None)
-        e = Action(g, "empty", self.id, after=[b.id])
+        e = Action(g, "empty", self.id, after=[b.id],
+                   condition=lambda x: x.find_res_by_id(self.id, free=False).full.level != 0)
         Free(g, self.id, after=[e.id])
 
         Event(sim, sim.now + 1000, "empty_tank" + str(self.id))
@@ -95,7 +96,8 @@ class Aquifer(Performer):
                    after=[b1.id])
         f = Free(g, lambda x: isinstance(x, Aquifer), None, after=[t.id])
         f1 = Free(g, lambda x: isinstance(x, Tank), None, after=[t.id, b1.id])
-        GenerateEvent(g, Event(sim, None, "haul"), after=[f1.id, f.id])
+        bh = Branch(g, after=[f1.id], condition=lambda x: x.now < 5000)
+        GenerateEvent(g, Event(sim, None, "haul"), after=[f1.id, f.id, bh.id], branch=bh)
         return g
 
 
@@ -129,4 +131,4 @@ if __name__ == '__main__':
     sim.add_res(p)
     # p = Aquifer(sim)
     # sim.add_res(p)
-    sim.run()
+    sim.run(until=10000)

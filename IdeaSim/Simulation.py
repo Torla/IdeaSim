@@ -41,6 +41,7 @@ class Simulation(simpy.Environment):
 
         self.__status__ = None
 
+
     # adding new not re-putting
     def add_res(self, res):
         assert isinstance(res, Resource)

@@ -11,7 +11,7 @@ class Action:
     new_id = itertools.count()
 
     def __init__(self, action_graph, action_type, who, sort_by=None, param=None, after=None, condition=None,
-                 on_false=None):
+                 on_false=None, branch=None):
         self.id = next(self.new_id)
         assert isinstance(action_graph, ActionsGraph)
         action_graph.actions[self.id] = self
@@ -24,6 +24,7 @@ class Action:
         self.after = [] if after is None else after
         self.condition = condition
         self.on_false = on_false
+        self.branch = branch
 
     @staticmethod
     def abort(action, sim):
@@ -35,21 +36,29 @@ class Action:
 
 class Block(Action):
 
-    def __init__(self, action_graph, who, sort_by=None, param=None, after=None):
-        super().__init__(action_graph, "Block", who, sort_by=sort_by, param=param, after=after)
+    def __init__(self, action_graph, who, sort_by=None, param=None, after=None, branch=None):
+        super().__init__(action_graph, "Block", who, sort_by=sort_by, param=param, after=after, branch=branch)
 
 
 class Free(Action):
 
-    def __init__(self, action_graph, who, sort_by=None, param=None, after=None):
-        super().__init__(action_graph, "Free", who, sort_by=sort_by, param=param, after=after)
+    def __init__(self, action_graph, who, sort_by=None, param=None, after=None, branch=None):
+        super().__init__(action_graph, "Free", who, sort_by=sort_by, param=param, after=after, branch=branch)
 
 
 class GenerateEvent(Action):
 
-    def __init__(self, action_graph, event, after=None):
-        super().__init__(action_graph, action_type="Event generation", who=None, sort_by=None, param=None, after=after)
+    def __init__(self, action_graph, event, after=None, branch=None):
+        super().__init__(action_graph, action_type="Event generation", who=None, sort_by=None, param=None, after=after,
+                         branch=branch)
         self.event = event
+
+
+class Branch(Action):
+
+    def __init__(self, action_graph, after=None, condition=None, on_false=None, branch=None):
+        super().__init__(action_graph, action_type=None, who=None, sort_by=None, param=None, after=after,
+                         condition=condition, on_false=on_false, branch=branch)
 
 
 class ActionsGraph:
@@ -67,6 +76,7 @@ class Executor:
         self.sim = sim
         sim.process(self.run())
         self.aborted = False
+        self.branches = {}
 
     class AbortExecution(Exception):
 
@@ -122,6 +132,11 @@ class Executor:
             yield completed_flags[action.id].put(float('inf'))
             return
 
+        elif action.branch in self.branches.values():
+            if not self.branches[action.branch]:
+                yield completed_flags[action.id].put(float('inf'))
+                return
+
         try:
             if action.condition is not None:
                 assert callable(action.condition)
@@ -130,6 +145,8 @@ class Executor:
                         assert callable(action.on_false)
                         yield completed_flags[action.id].put(float('inf'))
                         yield action.on_false(action, sim)
+                    if isinstance(action, Branch):
+                        self.branches[action.id] = False
                     return
 
             if isinstance(action, Block):
@@ -170,6 +187,10 @@ class Executor:
             elif isinstance(action, GenerateEvent):
                 action.event.launch()
                 sim.logger.log(str(action) + " launches event " + str(action.event), 7)
+
+            elif isinstance(action, Branch):
+                self.branches[action.id] = True
+                yield completed_flags[action.id].put(float('inf'))
 
             else:
                 try:
