@@ -173,12 +173,13 @@ class Executor:
 
             else:
                 try:
-                    l = list(filter(lambda x: action.who(x), taken_inf))
-                    if action.sort_by is None:
-                        pass
-                    else:
-                        l.sort(key=lambda x: action.sort_by(x))
-                    action.who = l[0].id
+                    if callable(action.who):
+                        l = list(filter(lambda x: action.who(x), taken_inf))
+                        if action.sort_by is None:
+                            pass
+                        else:
+                            l.sort(key=lambda x: action.sort_by(x))
+                        action.who = l[0].id
                     yield self.sim.process(
                         list(filter(lambda x: x.id == action.who, taken_inf))[0].perform(action, taken_inf))
                 except Performer.IllegalAction as err:

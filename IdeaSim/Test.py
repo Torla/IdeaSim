@@ -24,22 +24,27 @@ class Well(Resource):
         super().__init__(sim)
 
 
-class Tank(Resource):
+class Tank(Performer):
 
     def __init__(self, sim, capacity):
         super().__init__(sim)
         self.full = Container(sim, capacity)
         Event(sim, sim.now + 1000, "empty_tank" + str(self.id))
         self.sim.manager.add_mapping("empty_tank" + str(self.id), self.empty_tank)
+        self.add_mapping("empty", self.__do_empty__)
 
     def empty_tank(self, event):
         g = ActionsGraph(event.sim)
-        self.full._level = 0
         b = Block(g, self.id, sort_by=None)
-        Free(g, self.id, after=[b.id])
-        event.sim.logger.log("empty tank" + str(self.id), 6)
+        e = Action(g, "empty", self.id, after=[b.id])
+        Free(g, self.id, after=[e.id])
+
         Event(sim, sim.now + 1000, "empty_tank" + str(self.id))
         return g
+
+    def __do_empty__(self, action, sim, taken_inf):
+        yield self.full.get(self.full.level)
+        sim.logger.log("empty tank" + str(self.id), 9)
 
     def is_full(self):
         return self.full.level >= self.full.capacity
