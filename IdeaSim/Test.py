@@ -1,33 +1,39 @@
+import math
+
 from IdeaSim.Actions import ActionsGraph, Action, Block, Free, GenerateEvent, Branch
 from IdeaSim.Event import Event
 from IdeaSim.Manager import Manager
-from IdeaSim.Resources import Performer, Resource
+from IdeaSim.Resources import Performer, Resource, Resources, Position, Movable
 from IdeaSim.Simulation import Simulation
 from simpy.resources.container import Container
 
 
-def test(event):
-    if event.sim.now % 120 != 0:
-        event.sim.manager.activate()
-        raise Manager.RetryLater
-    event.sim.logger.log(str(event))
-    g = ActionsGraph(event.sim)
-    b = Block(g, lambda x: True, )
-    a = Action(g, "test", lambda x: True, param=None, after=[b.id])
-    Free(g, lambda x: True, None, param=[a.id])
-    return g
+class Position(Position):
+
+    def __init__(self, x, y):
+        super().__init__()
+        self.x = x
+        self.y = y
+
+    def distance(self, pos) -> float:
+        return math.sqrt((self.x - pos.x) ** 2 + (self.y - pos.y) ** 2)
+
+    def __eq__(self, other):
+        return self.x == other.x and self.y == other.y
 
 
-class Well(Resource):
+class Well(Resource, Movable):
 
-    def __init__(self, sim):
-        super().__init__(sim)
+    def __init__(self, sim, position):
+        Resource.__init__(self, sim)
+        Movable.__init__(self, position, sim)
 
 
-class Tank(Performer):
+class Tank(Performer, Movable):
 
-    def __init__(self, sim, capacity):
-        super().__init__(sim)
+    def __init__(self, sim, position, capacity):
+        Performer.__init__(self, sim)
+        Movable.__init__(self, position, sim)
         self.full = Container(sim, capacity)
         Event(sim, sim.now + 1000, "empty_tank" + str(self.id))
         self.sim.manager.add_mapping("empty_tank" + str(self.id), self.empty_tank)
@@ -55,10 +61,11 @@ class Tank(Performer):
             amount if amount + self.full.level <= self.full.capacity else self.full.capacity - self.full.level)
 
 
-class Aquifer(Performer):
+class Aquifer(Performer, Movable):
 
-    def __init__(self, sim):
-        super().__init__(sim)
+    def __init__(self, sim, position):
+        Performer.__init__(self, sim)
+        Movable.__init__(self, position, sim)
         self.add_mapping("take", self.take)
         self.add_mapping("drop", self.drop)
         Event(sim, 10 + len(sim.all_res), "haul")
@@ -122,14 +129,14 @@ if __name__ == '__main__':
     sim.__status__ = Status(sim)
     sim.manager.add_mapping("haul", Aquifer.haul)
 
-    sim.add_res(Well(sim))
-    sim.add_res(Tank(sim, 100))
-    sim.add_res(Tank(sim, 100))
-    sim.add_res(Tank(sim, 100))
-    sim.add_res(Tank(sim, 100))
+    sim.add_res(Well(sim, Position(0, 0)))
+    sim.add_res(Tank(sim, Position(10, 0), 100))
+    sim.add_res(Tank(sim, Position(20, 0), 100))
+    sim.add_res(Tank(sim, Position(30, 0), 100))
+    sim.add_res(Tank(sim, Position(40, 0), 100))
     # sim.add_res(Well(sim))
-    p = Aquifer(sim)
+    p = Aquifer(sim, Position(0, 0))
     sim.add_res(p)
-    p = Aquifer(sim)
+    p = Aquifer(sim, Position(0, 0))
     sim.add_res(p)
     sim.run(until=10000)

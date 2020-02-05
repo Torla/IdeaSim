@@ -45,16 +45,16 @@ class Position:
     def __init__(self):
         pass
 
-    def distance(self, pos) -> int:
+    def distance(self, pos) -> float:
         raise NotImplementedError("Please Implement this method")
 
     def __eq__(self, other):
         raise NotImplementedError("Please Implement this method")
 
 
-class Movable(Performer):
+class Movable:
     def __init__(self, position, sim):
-        super().__init__(sim)
+        self.sim = sim
         self.position = position
 
     def move(self, position):
