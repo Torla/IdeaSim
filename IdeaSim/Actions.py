@@ -132,7 +132,11 @@ class Executor:
             yield completed_flags[action.id].put(float('inf'))
             return
 
-        elif action.branch in self.branches.values():
+        elif action.branch is not None and action.branch not in self.branches:
+            yield completed_flags[action.id].put(float('inf'))
+            return
+
+        elif action.branch in self.branches:
             if not self.branches[action.branch]:
                 yield completed_flags[action.id].put(float('inf'))
                 return

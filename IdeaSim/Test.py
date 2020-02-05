@@ -77,7 +77,6 @@ class Aquifer(Performer):
     @staticmethod
     def rain(action, sim):
         Event(sim, sim.now + 1, "haul")
-        yield sim.wait(10)
         Action.abort(action, sim)
 
     @staticmethod
@@ -89,15 +88,15 @@ class Aquifer(Performer):
         b1 = Block(g, lambda x: isinstance(x, Well))
         t = Action(g, "take", lambda x: isinstance(x, Aquifer), param={"well": lambda x: isinstance(x, Well)},
                    after=[b.id, b1.id], condition=lambda x: not x.get_status().rain, on_false=Aquifer.rain)
-        f1 = Free(g, lambda x: isinstance(x, Well), None, after=[t.id])
+        f1 = Free(g, lambda x: isinstance(x, Well), after=[t.id])
         b1 = Block(g, lambda x: isinstance(x, Tank) and not x.is_full(), sort_by=lambda x: x.full.level,
-                   after=[t.id, f1.id])
+                   after=[t.id])
         t = Action(g, "drop", lambda x: isinstance(x, Aquifer), param={"tank": lambda x: isinstance(x, Tank)},
                    after=[b1.id])
         f = Free(g, lambda x: isinstance(x, Aquifer), None, after=[t.id])
         f1 = Free(g, lambda x: isinstance(x, Tank), None, after=[t.id, b1.id])
-        bh = Branch(g, after=[f1.id], condition=lambda x: x.now < 5000)
-        GenerateEvent(g, Event(sim, None, "haul"), after=[f1.id, f.id, bh.id], branch=bh)
+        bh = Branch(g, after=[t.id], condition=lambda x: x.now < 5000)
+        GenerateEvent(g, Event(sim, None, "haul"), after=[bh.id], branch=bh.id)
         return g
 
 
@@ -125,10 +124,12 @@ if __name__ == '__main__':
 
     sim.add_res(Well(sim))
     sim.add_res(Tank(sim, 100))
-    # sim.add_res(Tank(sim, 100))
+    sim.add_res(Tank(sim, 100))
+    sim.add_res(Tank(sim, 100))
+    sim.add_res(Tank(sim, 100))
     # sim.add_res(Well(sim))
     p = Aquifer(sim)
     sim.add_res(p)
-    # p = Aquifer(sim)
-    # sim.add_res(p)
+    p = Aquifer(sim)
+    sim.add_res(p)
     sim.run(until=10000)
